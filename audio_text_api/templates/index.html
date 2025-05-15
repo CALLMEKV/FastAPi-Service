@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Real-time Speech to Text</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        #text-output {
+            width: 100%;
+            height: 300px;
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: none;
+        }
+        .button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            margin: 5px;
+            transition: background-color 0.3s;
+        }
+        #startButton {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #stopButton {
+            background-color: #f44336;
+            color: white;
+        }
+        #startButton:hover { background-color: #45a049; }
+        #stopButton:hover { background-color: #da190b; }
+        .status {
+            margin-top: 10px;
+            font-style: italic;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Real-time Speech to Text</h1>
+        <div>
+            <button id="startButton" class="button">Start Recording</button>
+            <button id="stopButton" class="button" disabled>Stop Recording</button>
+        </div>
+        <textarea id="text-output" readonly placeholder="Transcribed text will appear here..."></textarea>
+        <div id="status" class="status">Status: Ready</div>
+    </div>
+
+    <script>
+        let ws = null;
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const textOutput = document.getElementById('text-output');
+        const statusDiv = document.getElementById('status');
+
+        async function startRecording() {
+            try {
+                // Request microphone permission
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                // Connect WebSocket
+                ws = new WebSocket(`ws://${window.location.host}/ws`);
+                
+                ws.onopen = () => {
+                    statusDiv.textContent = 'Status: Connected';
+                    startButton.disabled = true;
+                    stopButton.disabled = false;
+                };
+
+                ws.onmessage = (event) => {
+                    textOutput.value += event.data + ' ';
+                    textOutput.scrollTop = textOutput.scrollHeight;
+                };
+
+                ws.onclose = () => {
+                    statusDiv.textContent = 'Status: Disconnected';
+                    startButton.disabled = false;
+                    stopButton.disabled = true;
+                };
+
+            } catch (error) {
+                console.error('Error:', error);
+                statusDiv.textContent = 'Status: Error - ' + error.message;
+            }
+        }
+
+        function stopRecording() {
+            if (ws) {
+                ws.send('stop');
+                ws.close();
+            }
+            startButton.disabled = false;
+            stopButton.disabled = true;
+            statusDiv.textContent = 'Status: Stopped';
+        }
+
+        startButton.onclick = startRecording;
+        stopButton.onclick = stopRecording;
+    </script>
+</body>
+</html> 
